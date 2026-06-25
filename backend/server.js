@@ -56,3 +56,30 @@ app.post("/login", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
+
+app.post("/api/lunch-entry", async (req, res) => {
+  const { theatre, date, role, lunchOut, backIn } = req.body;
+
+  try {
+    await pool.query(
+      `CREATE TABLE IF NOT EXISTS lunch_entries (
+        id SERIAL PRIMARY KEY,
+        theatre TEXT,
+        date TEXT,
+        role TEXT,
+        lunch_out TEXT,
+        back_in TEXT
+      )`
+    );
+
+    await pool.query(
+      `INSERT INTO lunch_entries (theatre, date, role, lunch_out, back_in)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [theatre, date, role, lunchOut, backIn]
+    );
+
+    res.json({ message: "Lunch entry saved ✅" });
+  } catch (err) {
+    res.status(500).json({ message: "Error saving entry ❌" });
+  }
+});

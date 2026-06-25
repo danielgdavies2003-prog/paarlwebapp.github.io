@@ -197,3 +197,33 @@
   </script>
 </body>
 </html>
+<script>
+async function register() {
+  await fetch("https://YOUR-BACKEND.onrender.com/register", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      username: "daniel",
+      password: "1234"
+    })
+  });
+  alert("Registered!");
+}
+
+async function login() {
+  const res = await fetch("https://YOUR-BACKEND.onrender.com/login", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      username: "daniel",
+      password: "1234"
+    })
+  });
+
+  const data = await res.json();
+  alert(JSON.stringify(data));
+}
+</script>
+
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>

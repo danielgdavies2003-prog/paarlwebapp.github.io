@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Theatre Lunch Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 40px auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-bottom: 24px;
+      color: #1d3557;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    input, select, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      background: #1d3557;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #16324f;
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Theatre Lunch Tracker</h1>
+
+    <form id="lunchForm">
+      <div class="field">
+        <label for="theatre">Theatre</label>
+        <select id="theatre" name="theatre" required>
+          <option value="">Select theatre</option>
+          <option value="T1">T1</option>
+          <option value="T2">T2</option>
+          <option value="T3">T3</option>
+          <option value="T4">T4</option>
+          <option value="T5">T5</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" required />
+      </div>
+
+      <div class="field">
+        <label for="role">Role</label>
+        <select id="role" name="role" required>
+          <option value="">Select role</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="lunchOut">Lunch Out</label>
+          <input type="time" id="lunchOut" name="lunchOut" required />
+        </div>
+
+        <div class="field">
+          <label for="backIn">Back In</label>
+          <input type="time" id="backIn" name="backIn" required />
+        </div>
+      </div>
+
+      <button type="submit">Save Lunch Times</button>
+      <div id="message" class="message"></div>
+    </form>
+  </div>
+
+  <script>
+    const roleMap = {
+      T1: ["Anaesthetist", "Nursing", "Scrub sister", "Gynaecologist"],
+      T2: ["Anaesthetist", "Nursing", "Scrub sister", "Surgeon"],
+      T3: ["Anaesthetist", "Nursing", "Scrub sister", "Gyno/Ortho/Dentist"],
+      T4: ["Anaesthetist", "Nursing", "Scrub sister", "Orthopaedic Surgeon"],
+      T5: ["Anaesthetist", "Nursing", "Scrub sister", "Opthalmologist/Ortho/ENT"]
+    };
+
+    const theatreSelect = document.getElementById("theatre");
+    const roleSelect = document.getElementById("role");
+    const form = document.getElementById("lunchForm");
+    const messageBox = document.getElementById("message");
+
+    theatreSelect.addEventListener("change", () => {
+      const theatre = theatreSelect.value;
+      roleSelect.innerHTML = '<option value="">Select role</option>';
+
+      if (roleMap[theatre]) {
+        roleMap[theatre].forEach(role => {
+          const option = document.createElement("option");
+          option.value = role;
+          option.textContent = role;
+          roleSelect.appendChild(option);
+        });
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        theatre: document.getElementById("theatre").value,
+        date: document.getElementById("date").value,
+        role: document.getElementById("role").value,
+        lunchOut: document.getElementById("lunchOut").value,
+        backIn: document.getElementById("backIn").value
+      };
+
+      try {
+        const response = await fetch("/api/lunch-entry", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          messageBox.style.display = "block";
+          messageBox.className = "message success";
+          messageBox.textContent = result.message;
+          form.reset();
+          roleSelect.innerHTML = '<option value="">Select role</option>';
+        } else {
+          messageBox.style.display = "block";
+          messageBox.className = "message error";
+          messageBox.textContent = result.message || "Something went wrong.";
+        }
+      } catch (err) {
+        messageBox.style.display = "block";
+        messageBox.className = "message error";
+        messageBox.textContent = "Server error. Please try again.";
+      }
+    });
+  </script>
+</body>
+</html>

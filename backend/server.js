@@ -83,3 +83,46 @@ app.post("/api/lunch-entry", async (req, res) => {
     res.status(500).json({ message: "Error saving entry ❌" });
   }
 });
+
+const ExcelJS = require("exceljs");
+
+app.get("/export-excel", async (req, res) => {
+  const workbook = new ExcelJS.Workbook();
+
+  const theatres = ["T1", "T2", "T3", "T4", "T5"];
+
+  for (const theatre of theatres) {
+    const sheet = workbook.addWorksheet(theatre);
+
+    sheet.columns = [
+      { header: "Date", key: "date" },
+      { header: "Role", key: "role" },
+      { header: "Lunch Out", key: "lunch_out" },
+      { header: "Back In", key: "back_in" }
+    ];
+
+    const result = await pool.query(
+      "SELECT * FROM lunch_entries WHERE theatre = $1",
+      [theatre]
+    );
+
+    result.rows.forEach(row => {
+      sheet.addRow({
+        date: row.date,
+        role: row.role,
+        lunch_out: row.lunch_out,
+        back_in: row.back_in
+      });
+    });
+  }
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+
+  res.setHeader("Content-Disposition", "attachment; filename=lunch.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
+});

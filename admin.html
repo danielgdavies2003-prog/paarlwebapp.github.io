@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Panel</title>
+
+<style>
+body { font-family: Arial; background: #f4f6f8; }
+
+.container {
+  max-width: 600px;
+  margin: 40px auto;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+button {
+  padding: 10px;
+  width: 100%;
+  margin-top: 10px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>Admin Panel</h1>
+
+  <p id="status"></p>
+
+  <button onclick="downloadExcel()">Download Excel</button>
+
+</div>
+
+<script>
+const API = "https://paarltheatrewebapp-github-io.onrender.com";
+
+// ✅ ONLY allow you
+const ADMIN_USER = "daniel";  // 👈 change if needed
+
+let user = localStorage.getItem("user");
+
+if (!user || user !== ADMIN_USER) {
+  document.body.innerHTML = "<h2>Access denied ❌</h2>";
+} else {
+  document.getElementById("status").innerText =
+    "Logged in as admin: " + user;
+}
+
+function downloadExcel() {
+  window.open(API + "/export-excel");
+}
+</script>
+
+</body>
+</html>

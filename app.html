@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-atre Lunch Tracker</title><html>
+<html>
+<head>
+<title>Theatre Lunch Tracker</title>
 
 <style>
 body { font-family: Arial; background: #f4f6f8; }
 
 .container {
-  max-width: 800px;
+  max-width: 600px;
   margin: 40px auto;
   background: white;
   padding: 24px;
@@ -23,11 +25,6 @@ button {
   color: white;
   border: none;
 }
-
-table {
-  margin-top: 20px;
-  width: 100%;
-}
 </style>
 </head>
 
@@ -40,6 +37,7 @@ table {
   <button onclick="logout()">Logout</button>
 
   <form id="form">
+    <label>Theatre</label>
     <select id="theatre">
       <option value="">Select Theatre</option>
       <option>T1</option>
@@ -49,39 +47,40 @@ table {
       <option>T5</option>
     </select>
 
+    <label>Date</label>
     <input type="date" id="date">
 
+    <label>Role</label>
     <select id="role"></select>
 
-    <input type="time" id="lunchOut" placeholder="Lunch Out">
-    <input type="time" id="lunchIn" placeholder="Lunch In">
+    <label>Lunch Out</label>
+    <input type="time" id="lunchOut">
 
-    <button type="submit">Save</button>
+    <label>Lunch In</label>
+    <input type="time" id="lunchIn">
+
+    <button type="submit">Save & Download Excel</button>
   </form>
 
-<h3>My Entries</h3>
-<table border="1">
-<thead>
-<tr>
-<th>Date</th>
-<th>Theatre</th>
-<th>Role</th>
-<th>Lunch Out</th>
-<th>Lunch In</th>
-</tr>
-</thead>
-<tbody id="table"></tbody>
-</table>
+</div>
 
 <script>
 const API = "https://paarltheatrewebapp-github-io.onrender.com";
 
 let user = localStorage.getItem("user");
-
 if (!user) window.location.href = "index.html";
 
 document.getElementById("user").innerText = "Logged in: " + user;
 
+// ✅ FIXED VARIABLES
+const form = document.getElementById("form");
+const theatre = document.getElementById("theatre");
+const role = document.getElementById("role");
+const date = document.getElementById("date");
+const lunchOut = document.getElementById("lunchOut");
+const lunchIn = document.getElementById("lunchIn");
+
+// roles
 const roles = {
 T1:["Anaesthetist","Nursing","Scrub sister","Gynaecologist"],
 T2:["Anaesthetist","Nursing","Scrub sister","Surgeon"],
@@ -90,65 +89,41 @@ T4:["Anaesthetist","Nursing","Scrub sister","Orthopaedic Surgeon"],
 T5:["Anaesthetist","Nursing","Scrub sister","Opthalmologist/Ortho/ENT"]
 };
 
-const theatre = document.getElementById("theatre");
-const role = document.getElementById("role");
-
 theatre.onchange = () => {
-role.innerHTML="";
-roles[theatre.value]?.forEach(r=>{
-const o=document.createElement("option");
-o.text=r; role.add(o);
-});
+  role.innerHTML="";
+  roles[theatre.value]?.forEach(r=>{
+    const o=document.createElement("option");
+    o.text=r;
+    role.add(o);
+  });
 };
 
+// ✅ SAVE + DOWNLOAD
 form.onsubmit = async e => {
-e.preventDefault();
+  e.preventDefault();
 
-await fetch(API+"/api/lunch-entry",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-username:user,
-theatre:theatre.value,
-date:date.value,
-role:role.value,
-lunchOut:lunchOut.value,
-backIn:lunchIn.value
-})
-});
+  await fetch(API+"/api/lunch-entry",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      username:user,
+      theatre:theatre.value,
+      date:date.value,
+      role:role.value,
+      lunchOut:lunchOut.value,
+      backIn:lunchIn.value
+    })
+  });
 
-load();
+  // ✅ DOWNLOAD EXCEL AFTER SAVE
+  window.open(API + "/export-excel");
 };
-
-async function load(){
-const res=await fetch(API+"/api/my-entries/"+user);
-const data=await res.json();
-
-const t=document.getElementById("table");
-t.innerHTML="";
-
-data.forEach(e=>{
-t.innerHTML+=`
-<tr>
-<td>${e.date}</td>
-<td>${e.theatre}</td>
-<td>${e.role}</td>
-<td>${e.lunch_out}</td>
-<td>${e.back_in}</td>
-</tr>`;
-});
-}
 
 function logout(){
-localStorage.removeItem("user");
-window.location.href="index.html";
+  localStorage.removeItem("user");
+  window.location.href="index.html";
 }
-
-load();
 </script>
 
-</div>
 </body>
 </html>
-
-<head>

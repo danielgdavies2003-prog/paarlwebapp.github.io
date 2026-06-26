@@ -61,7 +61,9 @@ app.post("/register", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ error: "Username and password required ❌" });
+    return res.status(400).json({
+      error: "Username and password required ❌"
+    });
   }
 
   try {
@@ -70,10 +72,14 @@ app.post("/register", async (req, res) => {
       [username, password]
     );
 
-    res.json({ message: "Registered successfully ✅" });
+    res.json({
+      message: "Registered successfully ✅"
+    });
   } catch (err) {
     console.error("Register error:", err);
-    res.status(400).json({ error: "User already exists ❌" });
+    res.status(400).json({
+      error: "User already exists ❌"
+    });
   }
 });
 
@@ -82,7 +88,9 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ error: "Username and password required ❌" });
+    return res.status(400).json({
+      error: "Username and password required ❌"
+    });
   }
 
   try {
@@ -92,7 +100,9 @@ app.post("/login", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Invalid login ❌" });
+      return res.status(401).json({
+        error: "Invalid login ❌"
+      });
     }
 
     const user = result.rows[0];
@@ -100,11 +110,13 @@ app.post("/login", async (req, res) => {
     res.json({
       message: "Login successful ✅",
       username: user.username,
-      isAdmin: user.is_admin,
+      isAdmin: user.is_admin
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Server error ❌" });
+    res.status(500).json({
+      error: "Server error ❌"
+    });
   }
 });
 
@@ -114,7 +126,7 @@ app.post("/api/lunch-entry", async (req, res) => {
 
   if (!username || !theatre || !date || !role || !lunchOut || !backIn) {
     return res.status(400).json({
-      message: "All fields are required ❌",
+      message: "All fields are required ❌"
     });
   }
 
@@ -126,10 +138,14 @@ app.post("/api/lunch-entry", async (req, res) => {
       [username, theatre, date, role, lunchOut, backIn]
     );
 
-    res.json({ message: "Lunch entry saved ✅" });
+    res.json({
+      message: "Lunch entry saved ✅"
+    });
   } catch (err) {
     console.error("Save lunch error:", err);
-    res.status(500).json({ message: "Error saving lunch entry ❌" });
+    res.status(500).json({
+      message: "Error saving lunch entry ❌"
+    });
   }
 });
 
@@ -139,8 +155,8 @@ app.get("/api/my-entries/:username", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM lunch_entries 
-       WHERE username = $1 
+      `SELECT * FROM lunch_entries
+       WHERE username = $1
        ORDER BY date DESC, created_at DESC`,
       [username]
     );
@@ -148,7 +164,9 @@ app.get("/api/my-entries/:username", async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error("Fetch entries error:", err);
-    res.status(500).json({ error: "Error fetching entries ❌" });
+    res.status(500).json({
+      error: "Error fetching entries ❌"
+    });
   }
 });
 
@@ -157,7 +175,9 @@ app.get("/api/admin-check", async (req, res) => {
   const { username } = req.query;
 
   if (!username) {
-    return res.status(400).json({ isAdmin: false });
+    return res.status(400).json({
+      isAdmin: false
+    });
   }
 
   try {
@@ -167,13 +187,19 @@ app.get("/api/admin-check", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.json({ isAdmin: false });
+      return res.json({
+        isAdmin: false
+      });
     }
 
-    res.json({ isAdmin: result.rows[0].is_admin });
+    res.json({
+      isAdmin: result.rows[0].is_admin
+    });
   } catch (err) {
     console.error("Admin check error:", err);
-    res.status(500).json({ isAdmin: false });
+    res.status(500).json({
+      isAdmin: false
+    });
   }
 });
 
@@ -215,10 +241,11 @@ app.get("/export-excel", async (req, res) => {
   const { username } = req.query;
 
   if (!username) {
-    return res.status(403).send("Forbidden ❌");
+    return res.status(403).send("Forbidden ❌ Missing username");
   }
 
   try {
+    // Check admin
     const adminCheck = await pool.query(
       "SELECT is_admin FROM users WHERE username = $1",
       [username]
@@ -228,10 +255,33 @@ app.get("/export-excel", async (req, res) => {
       adminCheck.rows.length === 0 ||
       adminCheck.rows[0].is_admin !== true
     ) {
-      return res.status(403).send("Forbidden ❌");
+      return res.status(403).send("Forbidden ❌ Not admin");
     }
 
+    // Ensure lunch_entries table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lunch_entries (
+        id SERIAL PRIMARY KEY,
+        username TEXT,
+        theatre TEXT,
+        date TEXT,
+        role TEXT,
+        lunch_out TEXT,
+        back_in TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Ensure created_at exists if table already existed
+    await pool.query(`
+      ALTER TABLE lunch_entries
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    `);
+
     const workbook = new ExcelJS.Workbook();
+
+    workbook.creator = "Theatre Lunch Tracker";
+    workbook.created = new Date();
 
     const theatres = ["T1", "T2", "T3", "T4", "T5"];
 
@@ -244,19 +294,26 @@ app.get("/export-excel", async (req, res) => {
         { header: "Theatre", key: "theatre", width: 12 },
         { header: "Role", key: "role", width: 30 },
         { header: "Lunch Out", key: "lunch_out", width: 15 },
-        { header: "Lunch In", key: "back_in", width: 15 },
+        { header: "Lunch In", key: "back_in", width: 15 }
       ];
 
       const result = await pool.query(
         `SELECT username, date, theatre, role, lunch_out, back_in
          FROM lunch_entries
          WHERE theatre = $1
-         ORDER BY date ASC, created_at ASC`,
+         ORDER BY date ASC, id ASC`,
         [theatre]
       );
 
       result.rows.forEach((row) => {
-        sheet.addRow(row);
+        sheet.addRow({
+          username: row.username,
+          date: row.date,
+          theatre: row.theatre,
+          role: row.role,
+          lunch_out: row.lunch_out,
+          back_in: row.back_in
+        });
       });
 
       sheet.getRow(1).font = { bold: true };
@@ -274,9 +331,12 @@ app.get("/export-excel", async (req, res) => {
 
     await workbook.xlsx.write(res);
     res.end();
+
   } catch (err) {
     console.error("Excel export error:", err);
-    res.status(500).send("Excel export failed ❌");
+
+    // Temporary debug message so we can see the real issue in browser
+    res.status(500).send("Excel export failed ❌ " + err.message);
   }
 });
 

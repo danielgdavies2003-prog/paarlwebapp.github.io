@@ -1,84 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Theatre Lunch Tracker</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theatre Lunch Tracker</title>
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #f4f6f8;
-    }
+<style>
+body { font-family: Arial; background: #f4f6f8; }
 
-    .container {
-      max-width: 700px;
-      margin: 40px auto;
-      background: white;
-      padding: 24px;
-      border-radius: 12px;
-    }
+.container {
+  max-width: 700px;
+  margin: 40px auto;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+}
 
-    input, select, button {
-      padding: 10px;
-      margin: 8px 0;
-      width: 100%;
-    }
+input, select, button {
+  padding: 10px;
+  margin: 8px 0;
+  width: 100%;
+}
 
-    button {
-      background: #1d3557;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    .message {
-      margin-top: 10px;
-    }
-  </style>
+button {
+  background: #1d3557;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+</style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>Theatre Lunch Tracker</h1>
 
-    <!-- FORM -->
-    <form id="lunchForm">
-      <select id="theatre" required>
-        <option value="">Select theatre</option>
-        <option value="T1">T1</option>
-        <option value="T2">T2</option>
-        <option value="T3">T3</option>
-        <option value="T4">T4</option>
-        <option value="T5">T5</option>
-      </select>
+<div class="container">
+  <h1>Theatre Lunch Tracker</h1>
 
-      <input type="date" id="date" required>
+  <!-- USER LOGIN -->
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
 
-      <select id="role" required>
-        <option value="">Select role</option>
-      </select>
+  <p id="loggedUser"></p>
 
-      <input type="time" id="lunchOut" required>
-      <input type="time" id="backIn" required>
+  <!-- FORM -->
+  <form id="lunchForm">
+    <select id="theatre" required>
+      <option value="">Select theatre</option>
+      <option value="T1">T1</option>
+      <option value="T2">T2</option>
+      <option value="T3">T3</option>
+      <option value="T4">T4</option>
+      <option value="T5">T5</option>
+    </select>
 
-      <button type="submit">Save Lunch Times</button>
-    </form>
+    <input type="date" id="date" required>
 
-    <p id="message"></p>
+    <select id="role" required>
+      <option value="">Select role</option>
+    </select>
 
-    <hr>
+    <input type="time" id="lunchOut" required>
+    <input type="time" id="backIn" required>
 
-    <!-- AUTH BUTTONS -->
-    <button onclick="register()">Register</button>
-    <button onclick="login()">Login</button>
-    <button onclick="downloadExcel()">Download Excel</button>
-  </div>
+    <button type="submit">Save Lunch Times</button>
+  </form>
+
+  <p id="message"></p>
+
+  <hr>
+
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
+  <button onclick="logout()">Logout</button>
+  <button onclick="downloadExcel()">Download Excel</button>
+
+</div>
 
 <script>
 const API = "https://paarltheatrewebapp-github-io.onrender.com";
 
-// Role mapping
+// ✅ LOAD USER FROM STORAGE
+let currentUser = localStorage.getItem("user") || "";
+
+const theatre = document.getElementById("theatre");
+const role = document.getElementById("role");
+const message = document.getElementById("message");
+
+// ✅ ROLE MAP
 const roleMap = {
   T1: ["Anaesthetist", "Nursing", "Scrub sister", "Gynaecologist"],
   T2: ["Anaesthetist", "Nursing", "Scrub sister", "Surgeon"],
@@ -87,83 +95,4 @@ const roleMap = {
   T5: ["Anaesthetist", "Nursing", "Scrub sister", "Opthalmologist/Ortho/ENT"]
 };
 
-const theatre = document.getElementById("theatre");
-const role = document.getElementById("role");
-const message = document.getElementById("message");
-
-// Update roles
-theatre.addEventListener("change", () => {
-  role.innerHTML = '<option value="">Select role</option>';
-  roleMap[theatre.value]?.forEach(r => {
-    const option = document.createElement("option");
-    option.value = r;
-    option.textContent = r;
-    role.appendChild(option);
-  });
-});
-
-// Submit form
-document.getElementById("lunchForm").addEventListener("submit", async e => {
-  e.preventDefault();
-
-  const payload = {
-    theatre: theatre.value,
-    date: document.getElementById("date").value,
-    role: role.value,
-    lunchOut: document.getElementById("lunchOut").value,
-    backIn: document.getElementById("backIn").value
-  };
-
-  try {
-    const res = await fetch(API + "/api/lunch-entry", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-    message.innerText = data.message;
-    message.style.color = "green";
-
-  } catch (err) {
-    message.innerText = "Error saving data";
-    message.style.color = "red";
-  }
-});
-
-// Register
-async function register() {
-  const res = await fetch(API + "/register", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      username: "daniel",
-      password: "1234"
-    })
-  });
-
-  alert("Registered ✅");
-}
-
-// Login
-async function login() {
-  const res = await fetch(API + "/login", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      username: "daniel",
-      password: "1234"
-    })
-  });
-
-  const data = await res.json();
-  alert(JSON.stringify(data));
-}
-
-// Download Excel
-function downloadExcel() {
-  window.open(API + "/export-excel");
-}
-</script>
-
-</body>
+// ✅ UPDATE USER DISPLAY

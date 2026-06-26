@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TheatreLunchWeb")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b5b82be43c447a7bb04b4777ff7ffc776cb54670")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f656e0d69b6ee0f5b3abf6b72924a050f1cc15ff")]
 [assembly: System.Reflection.AssemblyProductAttribute("TheatreLunchWeb")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TheatreLunchWeb")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

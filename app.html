@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+atre Lunch Tracker</title><html>
+
+<style>
+body { font-family: Arial; background: #f4f6f8; }
+
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+input, select, button {
+  padding: 10px;
+  margin: 8px 0;
+  width: 100%;
+}
+
+button {
+  background: #1d3557;
+  color: white;
+  border: none;
+}
+
+table {
+  margin-top: 20px;
+  width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>Theatre Tracker</h1>
+  <p id="user"></p>
+
+  <button onclick="logout()">Logout</button>
+
+  <form id="form">
+    <select id="theatre">
+      <option value="">Select Theatre</option>
+      <option>T1</option>
+      <option>T2</option>
+      <option>T3</option>
+      <option>T4</option>
+      <option>T5</option>
+    </select>
+
+    <input type="date" id="date">
+
+    <select id="role"></select>
+
+    <input type="time" id="lunchOut" placeholder="Lunch Out">
+    <input type="time" id="lunchIn" placeholder="Lunch In">
+
+    <button type="submit">Save</button>
+  </form>
+
+<h3>My Entries</h3>
+<table border="1">
+<thead>
+<tr>
+<th>Date</th>
+<th>Theatre</th>
+<th>Role</th>
+<th>Lunch Out</th>
+<th>Lunch In</th>
+</tr>
+</thead>
+<tbody id="table"></tbody>
+</table>
+
+<script>
+const API = "https://paarltheatrewebapp-github-io.onrender.com";
+
+let user = localStorage.getItem("user");
+
+if (!user) window.location.href = "index.html";
+
+document.getElementById("user").innerText = "Logged in: " + user;
+
+const roles = {
+T1:["Anaesthetist","Nursing","Scrub sister","Gynaecologist"],
+T2:["Anaesthetist","Nursing","Scrub sister","Surgeon"],
+T3:["Anaesthetist","Nursing","Scrub sister","Gyno/Ortho/Dentist"],
+T4:["Anaesthetist","Nursing","Scrub sister","Orthopaedic Surgeon"],
+T5:["Anaesthetist","Nursing","Scrub sister","Opthalmologist/Ortho/ENT"]
+};
+
+const theatre = document.getElementById("theatre");
+const role = document.getElementById("role");
+
+theatre.onchange = () => {
+role.innerHTML="";
+roles[theatre.value]?.forEach(r=>{
+const o=document.createElement("option");
+o.text=r; role.add(o);
+});
+};
+
+form.onsubmit = async e => {
+e.preventDefault();
+
+await fetch(API+"/api/lunch-entry",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+username:user,
+theatre:theatre.value,
+date:date.value,
+role:role.value,
+lunchOut:lunchOut.value,
+backIn:lunchIn.value
+})
+});
+
+load();
+};
+
+async function load(){
+const res=await fetch(API+"/api/my-entries/"+user);
+const data=await res.json();
+
+const t=document.getElementById("table");
+t.innerHTML="";
+
+data.forEach(e=>{
+t.innerHTML+=`
+<tr>
+<td>${e.date}</td>
+<td>${e.theatre}</td>
+<td>${e.role}</td>
+<td>${e.lunch_out}</td>
+<td>${e.back_in}</td>
+</tr>`;
+});
+}
+
+function logout(){
+localStorage.removeItem("user");
+window.location.href="index.html";
+}
+
+load();
+</script>
+
+</div>
+</body>
+</html>
+
+<head>

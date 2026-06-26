@@ -4,146 +4,253 @@ const { Pool } = require("pg");
 const ExcelJS = require("exceljs");
 
 const app = express();
-app.use(cors());
+
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// ✅ DB
+// Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// ✅ INIT TABLES
+// Create / update database tables
 async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      username TEXT UNIQUE,
-      password TEXT,
-      is_admin BOOLEAN DEFAULT FALSE
-    );
-  `);
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      );
+    `);
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS lunch_entries (
-      id SERIAL PRIMARY KEY,
-      username TEXT,
-      theatre TEXT,
-      date TEXT,
-      role TEXT,
-      lunch_out TEXT,
-      back_in TEXT
-    );
-  `);
+    // Add admin column if your users table already existed before
+    await pool.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+    `);
 
-  console.log("DB ready ✅");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lunch_entries (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL,
+        theatre TEXT NOT NULL,
+        date TEXT NOT NULL,
+        role TEXT NOT NULL,
+        lunch_out TEXT NOT NULL,
+        back_in TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log("Database ready ✅");
+  } catch (err) {
+    console.error("Database setup failed ❌", err);
+  }
 }
-initDB();
 
-// ✅ ROOT
-app.get("/", (req, res) => res.send("Backend ✅"));
+// Home route
+app.get("/", (req, res) => {
+  res.send("Backend running ✅");
+});
 
-
-// ✅ REGISTER
+// Register user
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
 
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required ❌" });
+  }
+
   try {
     await pool.query(
-      "INSERT INTO users(username, password) VALUES($1, $2)",
+      "INSERT INTO users (username, password) VALUES ($1, $2)",
       [username, password]
     );
 
-    res.json({ message: "Registered ✅" });
-
-  } catch {
-    res.status(400).json({ error: "User exists ❌" });
+    res.json({ message: "Registered successfully ✅" });
+  } catch (err) {
+    console.error("Register error:", err);
+    res.status(400).json({ error: "User already exists ❌" });
   }
 });
 
-
-// ✅ LOGIN
+// Login user
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  const result = await pool.query(
-    "SELECT * FROM users WHERE username=$1 AND password=$2",
-    [username, password]
-  );
-
-  if (result.rows.length === 0) {
-    return res.status(401).json({ error: "Invalid ❌" });
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required ❌" });
   }
 
-  const user = result.rows[0];
+  try {
+    const result = await pool.query(
+      "SELECT username, is_admin FROM users WHERE username = $1 AND password = $2",
+      [username, password]
+    );
 
-  res.json({
-    username: user.username,
-    isAdmin: user.is_admin
-  });
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid login ❌" });
+    }
+
+    const user = result.rows[0];
+
+    res.json({
+      message: "Login successful ✅",
+      username: user.username,
+      isAdmin: user.is_admin,
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error ❌" });
+  }
 });
 
-
-// ✅ SAVE ENTRY
+// Save lunch entry
 app.post("/api/lunch-entry", async (req, res) => {
   const { username, theatre, date, role, lunchOut, backIn } = req.body;
 
-  await pool.query(
-    `INSERT INTO lunch_entries(username, theatre, date, role, lunch_out, back_in)
-     VALUES($1,$2,$3,$4,$5,$6)`,
-    [username, theatre, date, role, lunchOut, backIn]
-  );
+  if (!username || !theatre || !date || !role || !lunchOut || !backIn) {
+    return res.status(400).json({
+      message: "All fields are required ❌",
+    });
+  }
 
-  res.json({ message: "Saved ✅" });
+  try {
+    await pool.query(
+      `INSERT INTO lunch_entries 
+      (username, theatre, date, role, lunch_out, back_in)
+      VALUES ($1, $2, $3, $4, $5, $6)`,
+      [username, theatre, date, role, lunchOut, backIn]
+    );
+
+    res.json({ message: "Lunch entry saved ✅" });
+  } catch (err) {
+    console.error("Save lunch error:", err);
+    res.status(500).json({ message: "Error saving lunch entry ❌" });
+  }
 });
 
+// Get entries for one user
+app.get("/api/my-entries/:username", async (req, res) => {
+  const { username } = req.params;
 
-// ✅ ADMIN ONLY EXCEL
+  try {
+    const result = await pool.query(
+      `SELECT * FROM lunch_entries 
+       WHERE username = $1 
+       ORDER BY date DESC, created_at DESC`,
+      [username]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Fetch entries error:", err);
+    res.status(500).json({ error: "Error fetching entries ❌" });
+  }
+});
+
+// Admin check route
+app.get("/api/admin-check", async (req, res) => {
+  const { username } = req.query;
+
+  if (!username) {
+    return res.status(400).json({ isAdmin: false });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT is_admin FROM users WHERE username = $1",
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ isAdmin: false });
+    }
+
+    res.json({ isAdmin: result.rows[0].is_admin });
+  } catch (err) {
+    console.error("Admin check error:", err);
+    res.status(500).json({ isAdmin: false });
+  }
+});
+
+// Admin-only Excel export
 app.get("/export-excel", async (req, res) => {
   const { username } = req.query;
 
-  const userCheck = await pool.query(
-    "SELECT is_admin FROM users WHERE username=$1",
-    [username]
-  );
-
-  if (!userCheck.rows.length || !userCheck.rows[0].is_admin) {
+  if (!username) {
     return res.status(403).send("Forbidden ❌");
   }
 
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Entries");
+  try {
+    const adminCheck = await pool.query(
+      "SELECT is_admin FROM users WHERE username = $1",
+      [username]
+    );
 
-  sheet.columns = [
-    { header: "User", key: "username" },
-    { header: "Date", key: "date" },
-    { header: "Theatre", key: "theatre" },
-    { header: "Role", key: "role" },
-    { header: "Lunch Out", key: "lunch_out" },
-    { header: "Lunch In", key: "back_in" }
-  ];
+    if (
+      adminCheck.rows.length === 0 ||
+      adminCheck.rows[0].is_admin !== true
+    ) {
+      return res.status(403).send("Forbidden ❌");
+    }
 
-  const result = await pool.query("SELECT * FROM lunch_entries");
+    const workbook = new ExcelJS.Workbook();
 
-  result.rows.forEach(r => sheet.addRow(r));
+    const theatres = ["T1", "T2", "T3", "T4", "T5"];
 
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  );
+    for (const theatre of theatres) {
+      const sheet = workbook.addWorksheet(theatre);
 
-  res.setHeader(
-    "Content-Disposition",
-    "attachment; filename=lunch.xlsx"
-  );
+      sheet.columns = [
+        { header: "User", key: "username", width: 20 },
+        { header: "Date", key: "date", width: 15 },
+        { header: "Theatre", key: "theatre", width: 12 },
+        { header: "Role", key: "role", width: 30 },
+        { header: "Lunch Out", key: "lunch_out", width: 15 },
+        { header: "Lunch In", key: "back_in", width: 15 },
+      ];
 
-  await workbook.xlsx.write(res);
-  res.end();
+      const result = await pool.query(
+        `SELECT username, date, theatre, role, lunch_out, back_in
+         FROM lunch_entries
+         WHERE theatre = $1
+         ORDER BY date ASC, created_at ASC`,
+        [theatre]
+      );
+
+      result.rows.forEach((row) => {
+        sheet.addRow(row);
+      });
+
+      sheet.getRow(1).font = { bold: true };
+    }
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=TheatreLunchEntries.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("Excel export error:", err);
+    res.status(500).send("Excel export failed ❌");
+  }
 });
 
-
-app.listen(PORT, () =>
-  console.log("Running on port " + PORT)
-);
+// Start backend only after DB setup
+initDB().then(() => {
+  app.listen(PORT, () => {
+    console.log("Server running on port " + PORT + " ✅");
+  });
+});

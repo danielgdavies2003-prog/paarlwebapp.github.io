@@ -27,7 +27,6 @@ async function initDB() {
       );
     `);
 
-    // Add admin column if your users table already existed before
     await pool.query(`
       ALTER TABLE users
       ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
@@ -175,6 +174,39 @@ app.get("/api/admin-check", async (req, res) => {
   } catch (err) {
     console.error("Admin check error:", err);
     res.status(500).json({ isAdmin: false });
+  }
+});
+
+// TEMP ADMIN SETUP ROUTE
+// Use this once to make yourself admin.
+// After it works, remove this route for better security.
+app.get("/make-admin", async (req, res) => {
+  const { username, key } = req.query;
+
+  const ADMIN_SETUP_KEY = process.env.ADMIN_SETUP_KEY;
+
+  if (!ADMIN_SETUP_KEY || key !== ADMIN_SETUP_KEY) {
+    return res.status(403).send("Forbidden ❌");
+  }
+
+  if (!username) {
+    return res.status(400).send("Username required ❌");
+  }
+
+  try {
+    const result = await pool.query(
+      "UPDATE users SET is_admin = true WHERE username = $1 RETURNING username, is_admin",
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("User not found ❌. Register first.");
+    }
+
+    res.send(`${username} is now admin ✅`);
+  } catch (err) {
+    console.error("Make admin error:", err);
+    res.status(500).send("Error making admin ❌");
   }
 });
 
